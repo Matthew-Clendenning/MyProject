@@ -8,6 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function App() {
   const [task, setTask] = useState('');
   const [tasks, setTasks] = useState([]);
+  const [editingTaskId, setEditingTaskId] = useState(null);
+  const [editingText, setEditingText] = useState('');
 
   const addTask = () => {
     if (task.trim()) {
@@ -30,28 +32,43 @@ export default function App() {
     }));
   };
 
+  const editTask = (taskId, text) => {
+    setEditingTaskId(taskId);
+    setEditingText(text);
+  };
+
+  const updateTask = () => {
+    if (editingText.trim()) {
+      setTasks(tasks.map((item) => {
+        if (item.id === editingTaskId) {
+          return { ...item, text: editingText };
+        } else {
+          return item;
+        }
+      }));
+    }
+    setEditingTaskId(null);
+    setEditingText('');
+  };
+
   const storeData = async (value) => {
     try {
       const jsonValue = JSON.stringify(value);
       await AsyncStorage.setItem('tasks', jsonValue);
     } catch (e) {
-      console.log('Error saving tasks: ', e);
+      console.error('Error saving tasks:', e);
     }
-  }
+  };
 
   const loadData = async () => {
     try {
-      const value = await AsyncStorage.getItem('tasks');
-      if (value !== null) {
-        JSON.parse(jsonValue)
-      } else {
-        return null;
-      }
+      const jsonValue = await AsyncStorage.getItem('tasks');
+      return jsonValue != null ? JSON.parse(jsonValue) : [];
     } catch (e) {
-      console.log('Error loading tasks: ', e);
+      console.error('Error loading tasks:', e);
       return [];
     }
-  }
+  };
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -61,6 +78,10 @@ export default function App() {
     fetchTasks();
   }, []);
 
+  useEffect(() => {
+    storeData(tasks);
+  }, [tasks]);
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Simple To-Do List</Text>
@@ -68,6 +89,7 @@ export default function App() {
         <TextInput
           style={styles.input}
           placeholder='Add a new task'
+          placeholderTextColor='#999'
           value={task}
           onChangeText={(text) => setTask(text)}
         />
@@ -79,14 +101,34 @@ export default function App() {
         data={tasks}
         renderItem={({ item }) => (
           <View style={styles.taskContainer}>
-            <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)} style={styles.taskTextContainer}>
-              <Text style={item.completed ? styles.completedTaskText : styles.taskText}>
-                {item.text}
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => deleteTask(item.id)}>
-              <Text style={styles.deleteButton}>X</Text>
-            </TouchableOpacity>
+            {editingTaskId === item.id? (
+              <TextInput
+                style={styles.input}
+                value={editingText}
+                onChangeText={(text) => setEditingText(text)}
+                onSubmitEditing={updateTask}
+              />
+            ) : (
+              <TouchableOpacity onPress={() => toggleTaskCompletion(item.id)} style={styles.taskTextContainer}>
+                <Text style={item.completed ? styles.completedTaskText : styles.taskText}>
+                  {item.text}
+                </Text>
+              </TouchableOpacity>
+            )}
+            {editingTaskId === item.id? (
+              <TouchableOpacity onPress={updateTask}>
+                <Text style={styles.updateButton}>✔</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <TouchableOpacity onPress={() => editTask(item.id, item.text)}>
+                  <Text style={styles.editButton}>✎</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteTask(item.id)}>
+                  <Text style={styles.deleteButton}>X</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         )}
         keyExtractor={(item) => item.id}
@@ -156,9 +198,20 @@ const styles = StyleSheet.create({
     color: '#aaa',
     textDecorationLine: 'line-through',
   },
+  editButton: {
+    color: '#5C5CFF',
+    fontSize: 24,
+    marginRight: 10,
+    color: '#000'
+  },
+  updateButton: {
+    color: 'green',
+    fontSize: 24,
+    marginLeft: 10,
+  },
   deleteButton: {
     color: '#FF5C5C',
     fontWeight: 'bold',
-    fontSize: 18,
+    fontSize: 24,
   },
 });
