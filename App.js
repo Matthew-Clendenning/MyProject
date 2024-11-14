@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, TextInput, View,
   FlatList, TouchableOpacity
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
   const [task, setTask] = useState('');
@@ -28,6 +29,37 @@ export default function App() {
       }
     }));
   };
+
+  const storeData = async (value) => {
+    try {
+      const jsonValue = JSON.stringify(value);
+      await AsyncStorage.setItem('tasks', jsonValue);
+    } catch (e) {
+      console.log('Error saving tasks: ', e);
+    }
+  }
+
+  const loadData = async () => {
+    try {
+      const value = await AsyncStorage.getItem('tasks');
+      if (value !== null) {
+        JSON.parse(jsonValue)
+      } else {
+        return null;
+      }
+    } catch (e) {
+      console.log('Error loading tasks: ', e);
+      return [];
+    }
+  }
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      const loadedTasks = await loadData();
+      setTasks(loadedTasks);
+    };
+    fetchTasks();
+  }, []);
 
   return (
     <View style={styles.container}>
