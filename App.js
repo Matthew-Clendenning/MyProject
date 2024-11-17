@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, TextInput, View,
-  FlatList, TouchableOpacity
+  FlatList, TouchableOpacity, Animated,
 } from 'react-native';
+import Icon from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function App() {
@@ -13,13 +14,31 @@ export default function App() {
 
   const addTask = () => {
     if (task.trim()) {
-      setTasks([...tasks, { id: Date.now().toString(), text: task, completed: false }]);
+      const newTask = setTasks([...tasks, { id: Date.now().toString(), text: task, completed: false, fadeAnim: new Animated.Value(0) }]);
       setTask('');
+
+      Animated.timing(newTask.fadeAnim, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true,
+      }).start();
     }
   };
 
   const deleteTask = (taskId) => {
-    setTasks(tasks.filter((item) => item.id !== taskId));
+    const taskToDelete = tasks.find((item) => item.id === taskId);
+
+    if (taskToDelete) {
+      // Fade-out animation
+      Animated.timing(taskToDelete.fadeAnim, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => {
+        // Remove task after fade-out
+        setTasks(tasks.filter((item) => item.id !== taskId));
+      });
+    }
   };
 
   const toggleTaskCompletion = (taskId) => {
@@ -73,7 +92,10 @@ export default function App() {
   useEffect(() => {
     const fetchTasks = async () => {
       const loadedTasks = await loadData();
-      setTasks(loadedTasks);
+      setTasks(loadedTasks.map(task => ({
+        ...task,
+        fadeAnim: new Animated.Value(1), // Set initial opacity for loaded tasks
+      })));
     };
     fetchTasks();
   }, []);
@@ -94,7 +116,8 @@ export default function App() {
           onChangeText={(text) => setTask(text)}
         />
         <TouchableOpacity style={styles.addButton} onPress={addTask}>
-          <Text style={styles.addButtonText}>+</Text>
+          <Icon name="plus" size={18} color="#fff" />
+          {/*<Text style={styles.addButtonText}>+</Text>*/}
         </TouchableOpacity>
       </View>
       <FlatList
@@ -117,15 +140,18 @@ export default function App() {
             )}
             {editingTaskId === item.id? (
               <TouchableOpacity onPress={updateTask}>
-                <Text style={styles.updateButton}>✔</Text>
+                <Icon name="check-circle" size={24} color="green" style={{ marginLeft: 10 }} />
+                {/*<Text style={styles.updateButton}>✔</Text>*/}
               </TouchableOpacity>
             ) : (
               <>
                 <TouchableOpacity onPress={() => editTask(item.id, item.text)}>
-                  <Text style={styles.editButton}>✎</Text>
+                  <Icon name="edit" size={24} color="#5C5CFF" style={{ marginRight: 10 }} />
+                  {/*<Text style={styles.editButton}>✎</Text>*/}
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => deleteTask(item.id)}>
-                  <Text style={styles.deleteButton}>X</Text>
+                  <Icon name="trash-o" size={24} color="#FF5C5C" />
+                  {/*<Text style={styles.deleteButton}>X</Text>*/}
                 </TouchableOpacity>
               </>
             )}
@@ -173,11 +199,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginLeft: 10,
   },
-  addButtonText: {
-    color: 'white',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
   taskContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -197,21 +218,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#aaa',
     textDecorationLine: 'line-through',
-  },
-  editButton: {
-    color: '#5C5CFF',
-    fontSize: 24,
-    marginRight: 10,
-    color: '#000'
-  },
-  updateButton: {
-    color: 'green',
-    fontSize: 24,
-    marginLeft: 10,
-  },
-  deleteButton: {
-    color: '#FF5C5C',
-    fontWeight: 'bold',
-    fontSize: 24,
   },
 });
