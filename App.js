@@ -12,16 +12,29 @@ export default function App() {
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [editingText, setEditingText] = useState('');
 
+  const fadeIn = (fadeAnim) => {
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 500,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const fadeOut = (fadeAnim, callback) => {
+    Animated.timing(fadeAnim, {
+      toValue: 0,
+      duration: 500,
+      useNativeDriver: true,
+    }).start(() => callback && callback());
+  };
+
   const addTask = () => {
     if (task.trim()) {
-      const newTask = setTasks([...tasks, { id: Date.now().toString(), text: task, completed: false, fadeAnim: new Animated.Value(0) }]);
+      const newTask = { id: Date.now().toString(), text: task, completed: false, fadeAnim: new Animated.Value(0) };
+      setTasks([...tasks, newTask]);
       setTask('');
 
-      Animated.timing(newTask.fadeAnim, {
-        toValue: 1,
-        duration: 500,
-        useNativeDriver: true,
-      }).start();
+      fadeIn(newTask.fadeAnim);
     }
   };
 
@@ -29,13 +42,8 @@ export default function App() {
     const taskToDelete = tasks.find((item) => item.id === taskId);
 
     if (taskToDelete) {
-      // Fade-out animation
-      Animated.timing(taskToDelete.fadeAnim, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => {
-        // Remove task after fade-out
+      // Fade-out animation before deleting the task
+      fadeOut(taskToDelete.fadeAnim, () => {
         setTasks(tasks.filter((item) => item.id !== taskId));
       });
     }
@@ -94,7 +102,7 @@ export default function App() {
       const loadedTasks = await loadData();
       setTasks(loadedTasks.map(task => ({
         ...task,
-        fadeAnim: new Animated.Value(1), // Set initial opacity for loaded tasks
+        fadeAnim: new Animated.Value(1)
       })));
     };
     fetchTasks();
@@ -123,7 +131,7 @@ export default function App() {
       <FlatList
         data={tasks}
         renderItem={({ item }) => (
-          <View style={styles.taskContainer}>
+          <Animated.View style={[styles.taskContainer, { opacity: item.fadeAnim }]}>
             {editingTaskId === item.id? (
               <TextInput
                 style={styles.input}
@@ -155,7 +163,7 @@ export default function App() {
                 </TouchableOpacity>
               </>
             )}
-          </View>
+          </Animated.View>
         )}
         keyExtractor={(item) => item.id}
       />
